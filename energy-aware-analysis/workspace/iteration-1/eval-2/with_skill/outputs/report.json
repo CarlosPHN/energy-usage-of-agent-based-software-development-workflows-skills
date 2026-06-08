@@ -1,0 +1,254 @@
+{
+  "skill": "energy-aware-analysis",
+  "input_path": ".agents/skills/energy-aware-analysis/evals/files/sample-java/",
+  "languages_detected": ["java"],
+  "files_analyzed": 1,
+  "energy_efficiency_score": 28,
+  "summary": {
+    "total_issues": 8,
+    "critical": 2,
+    "high": 2,
+    "medium": 3,
+    "low": 1,
+    "top_areas": [
+      "N+1 database queries in processOrders (lines 11-20)",
+      "O(n²) nested loop in findDuplicates (lines 38-44)",
+      "Unbuffered byte-by-byte I/O in readConfig (lines 29-31)"
+    ]
+  },
+  "hotspots": [
+    {
+      "file": "evals/files/sample-java/OrderProcessor.java",
+      "line": 11,
+      "function": "processOrders",
+      "issue": "N+1 database queries inside loop — one query per orderId instead of a single batch query",
+      "severity": "critical",
+      "impact": {
+        "cpu": "medium",
+        "memory": "low",
+        "disk": "none",
+        "network": "high"
+      },
+      "explanation": "For each orderId, a separate SELECT query is executed via a new Statement, sending N round-trips to the database. With hundreds of orderIds, this generates massive network overhead, repeated query parsing, and result-set processing. Also uses SELECT * which fetches unused columns, wasting bandwidth and memory.",
+      "snippet": "for (int i = 0; i < orderIds.size(); i++) {\n    sql += \"SELECT * FROM orders WHERE id = \" + orderIds.get(i) + \";\";\n    Statement stmt = conn.createStatement();\n    ResultSet rs = stmt.executeQuery(sql);\n    while (rs.next()) {\n        result.add(rs.getString(\"name\") + \",\" + rs.getString(\"total\"));\n    }\n    rs.close();\n    stmt.close();\n}",
+      "optimization": "Replace with a single parameterized query using WHERE id IN (...) with a PreparedStatement, or use JDBC batch processing. Also select only required columns (name, total) instead of SELECT *."
+    },
+    {
+      "file": "evals/files/sample-java/OrderProcessor.java",
+      "line": 38,
+      "function": "findDuplicates",
+      "issue": "O(n²) nested loop comparing every pair of elements",
+      "severity": "critical",
+      "impact": {
+        "cpu": "high",
+        "memory": "low",
+        "disk": "none",
+        "network": "none"
+      },
+      "explanation": "The nested for-loop compares each element against every other element, giving O(n²) time complexity. For a list of 10k numbers this requires ~50M comparisons. Additionally, duplicates are added once per matching pair, not once per duplicated value, producing a larger result than expected.",
+      "snippet": "for (int i = 0; i < numbers.size(); i++) {\n    for (int j = 0; j < numbers.size(); j++) {\n        if (i != j && numbers.get(i).equals(numbers.get(j))) {\n            dupes.add(numbers.get(i));\n        }\n    }\n}",
+      "optimization": "Use a HashSet to track seen numbers: iterate once (O(n)), add to a set if already seen. This reduces CPU energy by ~99% on large inputs and avoids duplicate entries in the result."
+    },
+    {
+      "file": "evals/files/sample-java/OrderProcessor.java",
+      "line": 29,
+      "function": "readConfig",
+      "issue": "Unbuffered byte-by-byte I/O reading one byte per system call",
+      "severity": "high",
+      "impact": {
+        "cpu": "medium",
+        "memory": "medium",
+        "disk": "high",
+        "network": "none"
+      },
+      "explanation": "FileInputStream.read() reads one byte per native call, causing excessive kernel-user context switches. Combined with repeated String concatenation on each byte, this is extremely inefficient for any non-trivial config file. The loop performs O(n) syscalls and O(n²) character copying.",
+      "snippet": "FileInputStream fis = new FileInputStream(\"/etc/app/config.properties\");\nint b;\nString content = \"\";\nwhile ((b = fis.read()) != -1) {\n    content += (char) b;\n}",
+      "optimization": "Wrap FileInputStream in a BufferedInputStream, or use Files.readString(Path) / Files.readAllLines(Path) which handle buffering internally. Replace String concatenation with StringBuilder."
+    },
+    {
+      "file": "evals/files/sample-java/OrderProcessor.java",
+      "line": 30,
+      "function": "readConfig",
+      "issue": "String concatenation (+=) inside a per-byte loop creates O(n²) copying",
+      "severity": "high",
+      "impact": {
+        "cpu": "high",
+        "memory": "high",
+        "disk": "none",
+        "network": "none"
+      },
+      "explanation": "Using content += (char) b inside the read loop causes the JVM to create a new String object and copy all previous characters on every iteration. For a 100KB file this means ~5 billion total character copies (O(n²)). This is one of the most expensive Java anti-patterns.",
+      "snippet": "String content = \"\";\nwhile ((b = fis.read()) != -1) {\n    content += (char) b;\n}",
+      "optimization": "Use StringBuilder.append() in the loop, or better yet use Files.readString(Path) which handles everything efficiently in one call."
+    },
+    {
+      "file": "evals/files/sample-java/OrderProcessor.java",
+      "line": 12,
+      "function": "processOrders",
+      "issue": "String concatenation (+=) in loop building SQL string incrementally",
+      "severity": "medium",
+      "impact": {
+        "cpu": "medium",
+        "memory": "medium",
+        "disk": "none",
+        "network": "none"
+      },
+      "explanation": "The sql variable is repeatedly concatenated inside the loop, creating new String objects and copying old content each time. Also the sql variable accumulates all previous queries instead of being reset per iteration, so the query string grows quadratically.",
+      "snippet": "String sql = \"\";\nfor (int i = 0; i < orderIds.size(); i++) {\n    sql += \"SELECT * FROM orders WHERE id = \" + orderIds.get(i) + \";\";\n    ...\n}",
+      "optimization": "Use StringBuilder, and reset/scope the SQL variable inside the loop (or eliminate it entirely by switching to PreparedStatement)."
+    },
+    {
+      "file": "evals/files/sample-java/OrderProcessor.java",
+      "line": 9,
+      "function": "processOrders",
+      "issue": "Database connection opened per method call without connection pooling",
+      "severity": "medium",
+      "impact": {
+        "cpu": "medium",
+        "memory": "low",
+        "disk": "none",
+        "network": "medium"
+      },
+      "explanation": "DriverManager.getConnection() is called each time processOrders runs. Establishing a TCP connection and authentication handshake is expensive. In a server context this would quickly exhaust database connections.",
+      "snippet": "Connection conn = DriverManager.getConnection(\"jdbc:mysql://localhost/db\", \"user\", \"pass\");",
+      "optimization": "Use a connection pool (HikariCP, DBCP2) to reuse connections. Pass the Connection as a parameter or inject via a DataSource."
+    },
+    {
+      "file": "evals/files/sample-java/OrderProcessor.java",
+      "line": 15,
+      "function": "processOrders",
+      "issue": "ResultSet string concatenation creating intermediate String objects per row",
+      "severity": "medium",
+      "impact": {
+        "cpu": "medium",
+        "memory": "medium",
+        "disk": "none",
+        "network": "none"
+      },
+      "explanation": "Each row concatenates two fields with + \",\" +, creating intermediate String objects. While not as severe as the loop-level issue, if there are many rows this adds unnecessary allocation pressure.",
+      "snippet": "result.add(rs.getString(\"name\") + \",\" + rs.getString(\"total\"));",
+      "optimization": "Use StringBuilder for each row, or define a simple DTO class and let a mapping library handle formatting outside the hot loop."
+    },
+    {
+      "file": "evals/files/sample-java/OrderProcessor.java",
+      "line": 9,
+      "function": "processOrders",
+      "issue": "Resources not managed with try-with-resources — potential leaks on exceptions",
+      "severity": "low",
+      "impact": {
+        "cpu": "low",
+        "memory": "low",
+        "disk": "none",
+        "network": "none"
+      },
+      "explanation": "If an SQL exception occurs between Statement creation and close(), Connection, Statement, and ResultSet objects leak. Leaked connections exhaust the database pool and cause GC pressure.",
+      "snippet": "Connection conn = DriverManager.getConnection(...);\n...\nconn.close();",
+      "optimization": "Use try-with-resources for Connection, Statement, and ResultSet to ensure deterministic cleanup even on exceptions."
+    }
+  ],
+  "prioritized_issues": [
+    {
+      "rank": 1,
+      "file": "evals/files/sample-java/OrderProcessor.java",
+      "line": 11,
+      "function": "processOrders",
+      "issue": "N+1 database queries inside loop",
+      "severity": "critical",
+      "explanation": "Each orderId triggers a separate database round-trip with a fresh Statement. Combined with SELECT * over-fetching, this is the most impactful network and CPU waste in the file.",
+      "snippet": "for (int i = 0; i < orderIds.size(); i++) {\n    sql += \"SELECT * FROM orders WHERE id = \" + orderIds.get(i) + \";\";\n    Statement stmt = conn.createStatement();\n    ResultSet rs = stmt.executeQuery(sql);",
+      "optimization": "Use a single parameterized query with WHERE id IN (...) or JDBC batch. Select only needed columns.",
+      "estimated_savings": "Could reduce network I/O by ~99% (1 round trip vs N) and eliminate redundant query parsing."
+    },
+    {
+      "rank": 2,
+      "file": "evals/files/sample-java/OrderProcessor.java",
+      "line": 38,
+      "function": "findDuplicates",
+      "issue": "O(n²) nested loop over all elements",
+      "severity": "critical",
+      "explanation": "Pairwise comparison in a double loop causes quadratic CPU cost. On a hot path with large lists this is devastating for energy consumption.",
+      "snippet": "for (int i = 0; i < numbers.size(); i++) {\n    for (int j = 0; j < numbers.size(); j++) {\n        if (i != j && numbers.get(i).equals(numbers.get(j))) {\n            dupes.add(numbers.get(i));",
+      "optimization": "Use a HashSet to detect duplicates in a single O(n) pass.",
+      "estimated_savings": "Could reduce CPU energy by ~99% on large lists (O(n) vs O(n²))."
+    },
+    {
+      "rank": 3,
+      "file": "evals/files/sample-java/OrderProcessor.java",
+      "line": 29,
+      "function": "readConfig",
+      "issue": "Unbuffered byte-by-byte I/O and O(n²) String concatenation combined",
+      "severity": "high",
+      "explanation": "Reading one byte per syscall and concatenating to a String on each byte creates two multiplicative inefficiencies: O(n) syscalls and O(n²) character copying. For any realistic config file this is the worst possible I/O approach.",
+      "snippet": "FileInputStream fis = new FileInputStream(\"/etc/app/config.properties\");\nint b;\nString content = \"\";\nwhile ((b = fis.read()) != -1) {\n    content += (char) b;\n}",
+      "optimization": "Replace entire method with Files.readString(Path) or wrap in BufferedReader / BufferedInputStream.",
+      "estimated_savings": "Could reduce disk I/O overhead by ~99% and eliminate O(n²) memory copying."
+    },
+    {
+      "rank": 4,
+      "file": "evals/files/sample-java/OrderProcessor.java",
+      "line": 30,
+      "function": "readConfig",
+      "issue": "String concatenation in per-byte loop creating O(n²) copying",
+      "severity": "high",
+      "explanation": "content += (char) b creates a new String and copies all previous content on each iteration. This is the classic Java String concat-in-loop anti-pattern, amplified by being inside a byte-by-byte I/O loop.",
+      "snippet": "String content = \"\";\nwhile ((b = fis.read()) != -1) {\n    content += (char) b;\n}",
+      "optimization": "Use StringBuilder. Even better, eliminate both issues by using Files.readString().",
+      "estimated_savings": "Could reduce memory allocation by ~99% and CPU by ~90% on this code path."
+    },
+    {
+      "rank": 5,
+      "file": "evals/files/sample-java/OrderProcessor.java",
+      "line": 12,
+      "function": "processOrders",
+      "issue": "String concatenation in loop with quadratic growth due to accumulation",
+      "severity": "medium",
+      "explanation": "sql accumulates all previous queries, growing and copying the whole string each iteration. For N=500 orderIds this means ~125K total character copies (and the concatenated string is sent as each query).",
+      "snippet": "sql += \"SELECT * FROM orders WHERE id = \" + orderIds.get(i) + \";\";",
+      "optimization": "Use StringBuilder and scope the SQL variable per iteration, or eliminate inline SQL entirely with PreparedStatement.",
+      "estimated_savings": "Could reduce memory allocation by ~90% on this code path."
+    },
+    {
+      "rank": 6,
+      "file": "evals/files/sample-java/OrderProcessor.java",
+      "line": 9,
+      "function": "processOrders",
+      "issue": "No connection pooling",
+      "severity": "medium",
+      "explanation": "A new TCP connection is established on every invocation. Each connection setup includes TCP handshake, SSL negotiation, and authentication.",
+      "snippet": "Connection conn = DriverManager.getConnection(\"jdbc:mysql://localhost/db\", \"user\", \"pass\");",
+      "optimization": "Use a connection pool (HikariCP). Pass Connection as a parameter or inject via DataSource.",
+      "estimated_savings": "Could reduce connection overhead by ~95% on repeated calls."
+    },
+    {
+      "rank": 7,
+      "file": "evals/files/sample-java/OrderProcessor.java",
+      "line": 15,
+      "function": "processOrders",
+      "issue": "Inline string concatenation per ResultSet row",
+      "severity": "medium",
+      "explanation": "Each row creates intermediate String objects for the CSV line. Not the hottest issue but adds allocation pressure proportional to result set size.",
+      "snippet": "result.add(rs.getString(\"name\") + \",\" + rs.getString(\"total\"));",
+      "optimization": "Use StringBuilder per row or defer formatting to a DTO mapping layer.",
+      "estimated_savings": "Could reduce per-row allocations by ~50%."
+    },
+    {
+      "rank": 8,
+      "file": "evals/files/sample-java/OrderProcessor.java",
+      "line": 9,
+      "function": "processOrders",
+      "issue": "Resources not managed with try-with-resources",
+      "severity": "low",
+      "explanation": "Potential resource leaks on exceptions cause connection exhaustion and GC overhead over time.",
+      "snippet": "Connection conn = DriverManager.getConnection(...);\n...\nconn.close();",
+      "optimization": "Wrap Connection, Statement, and ResultSet in try-with-resources blocks.",
+      "estimated_savings": "Prevents long-term resource leaks and GC pressure."
+    }
+  ],
+  "recommendations": [
+    "Refactor processOrders: replace N+1 queries with a single parameterized IN-clause query using PreparedStatement, select only name and total columns, and use connection pooling (HikariCP)",
+    "Refactor findDuplicates: replace O(n²) nested loop with a single O(n) HashSet pass to detect duplicates",
+    "Refactor readConfig: use Files.readString(Path) to replace both the unbuffered I/O and the O(n²) String concatenation with a single efficient call",
+    "Add try-with-resources to processOrders for deterministic cleanup of Connection, Statement, and ResultSet",
+    "Use StringBuilder instead of String concatenation for all in-loop string building operations"
+  ]
+}

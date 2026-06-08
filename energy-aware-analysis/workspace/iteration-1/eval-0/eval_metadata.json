@@ -1,0 +1,43 @@
+{
+  "eval_id": 0,
+  "eval_name": "python-data-processor",
+  "prompt": "Analiza energéticamente el código en el directorio evals/files/sample-python/. Dame un reporte JSON completo con todos los hotspots y un score de eficiencia.",
+  "assertions": [
+    {
+      "text": "The output is valid JSON",
+      "expected": true
+    },
+    {
+      "text": "The output contains an 'energy_efficiency_score' field (0-100)",
+      "expected": true
+    },
+    {
+      "text": "The output identifies the O(n²) nested loop in process_records",
+      "expected": true
+    },
+    {
+      "text": "The output identifies string concatenation with += in a loop",
+      "expected": true
+    },
+    {
+      "text": "The output identifies busy-waiting/polling in poll_status",
+      "expected": true
+    },
+    {
+      "text": "The output identifies repeated file open/write inside a loop in export_report",
+      "expected": true
+    },
+    {
+      "text": "The output includes 'snippet' fields showing affected code",
+      "expected": true
+    },
+    {
+      "text": "Each hotspot includes an 'optimization' field",
+      "expected": true
+    },
+    {
+      "text": "The output has a 'languages_detected' array containing 'python'",
+      "expected": true
+    }
+  ]
+}

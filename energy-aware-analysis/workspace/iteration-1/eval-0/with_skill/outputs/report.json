@@ -1,0 +1,199 @@
+{
+  "skill": "energy-aware-analysis",
+  "input_path": ".agents/skills/energy-aware-analysis/evals/files/sample-python/data_processor.py",
+  "languages_detected": ["python"],
+  "files_analyzed": 1,
+  "energy_efficiency_score": 42,
+  "summary": {
+    "total_issues": 7,
+    "critical": 2,
+    "high": 2,
+    "medium": 2,
+    "low": 1,
+    "top_areas": [
+      "O(n²) nested loop in process_records",
+      "String concatenation with += inside nested loop in process_records",
+      "File open inside loop in export_report"
+    ]
+  },
+  "hotspots": [
+    {
+      "file": "data_processor.py",
+      "line": 9,
+      "function": "process_records",
+      "issue": "O(n²) nested loop over entire dataset",
+      "severity": "critical",
+      "impact": {
+        "cpu": "high",
+        "memory": "low",
+        "disk": "none",
+        "network": "none"
+      },
+      "explanation": "The nested loop iterates over all records for each record, creating O(n²) complexity. With large datasets this causes quadratic CPU waste and unnecessary energy consumption on every call.",
+      "snippet": "for i in range(len(records)):\n    for j in range(len(records)):\n        if records[i][\"id\"] == records[j][\"parent_id\"]:",
+      "optimization": "Build a dict mapping parent_id to records for O(1) lookups, reducing complexity to O(n)."
+    },
+    {
+      "file": "data_processor.py",
+      "line": 12,
+      "function": "process_records",
+      "issue": "String concatenation with += inside nested loop (O(n²) memory copies)",
+      "severity": "high",
+      "impact": {
+        "cpu": "high",
+        "memory": "high",
+        "disk": "none",
+        "network": "none"
+      },
+      "explanation": "Using += for string concatenation creates a new string object on each iteration, resulting in O(n²) memory allocations and copies. Since this is inside an O(n²) loop, the cost compounds dramatically.",
+      "snippet": "result += str(records[i][\"value\"]) + \",\" + str(records[j][\"value\"]) + \"\\n\"",
+      "optimization": "Collect parts in a list and use ''.join(list) at the end for O(n) string building."
+    },
+    {
+      "file": "data_processor.py",
+      "line": 34,
+      "function": "export_report",
+      "issue": "File opened inside loop causes repeated I/O overhead",
+      "severity": "high",
+      "impact": {
+        "cpu": "low",
+        "memory": "none",
+        "disk": "high",
+        "network": "none"
+      },
+      "explanation": "The file is opened in append mode on every iteration, causing repeated OS-level open/close/fsync calls. This is extremely expensive on disk I/O for large datasets.",
+      "snippet": "for row in rows:\n    with open(\"/tmp/report.csv\", \"a\") as f:\n        f.write(f\"{row[0]},{row[1]},{row[2]}\\n\")",
+      "optimization": "Open the file once before the loop and close it after. Buffer multiple rows and write in batches."
+    },
+    {
+      "file": "data_processor.py",
+      "line": 19,
+      "function": "load_data",
+      "issue": "f.readlines() loads entire file into memory unnecessarily",
+      "severity": "medium",
+      "impact": {
+        "cpu": "low",
+        "memory": "high",
+        "disk": "low",
+        "network": "none"
+      },
+      "explanation": "Using f.readlines() reads the whole file into a list before iterating. For large files this doubles memory usage since both the list of lines and the parsed data coexist.",
+      "snippet": "with open(filepath, \"r\") as f:\n    lines = f.readlines()\n    for line in lines:",
+      "optimization": "Iterate directly over the file object: for line in f: — this streams line by line."
+    },
+    {
+      "file": "data_processor.py",
+      "line": 26,
+      "function": "poll_status",
+      "issue": "Busy-wait polling loop wastes CPU cycles",
+      "severity": "medium",
+      "impact": {
+        "cpu": "medium",
+        "memory": "none",
+        "disk": "none",
+        "network": "none"
+      },
+      "explanation": "The while-true loop with time.sleep(0.1) continuously polls a status function. Even with a sleep, this pattern wastes energy compared to event-driven or callback-based approaches.",
+      "snippet": "while True:\n    status = check_fn()\n    if status == \"ready\":\n        break\n    time.sleep(0.1)",
+      "optimization": "Use an event-driven pattern (callbacks, async/await with asyncio.Event, or a notification mechanism)."
+    },
+    {
+      "file": "data_processor.py",
+      "line": 9,
+      "function": "process_records",
+      "issue": "range(len(...)) instead of direct iteration or enumerate",
+      "severity": "low",
+      "impact": {
+        "cpu": "low",
+        "memory": "none",
+        "disk": "none",
+        "network": "none"
+      },
+      "explanation": "Using range(len(records)) requires extra attribute lookups and indexing. Direct iteration over records is more idiomatic and slightly more CPU-efficient.",
+      "snippet": "for i in range(len(records)):\n    for j in range(len(records)):",
+      "optimization": "Use for i, rec_i in enumerate(records): and for j, rec_j in enumerate(records): or restructure to avoid index-based access."
+    }
+  ],
+  "prioritized_issues": [
+    {
+      "rank": 1,
+      "file": "data_processor.py",
+      "line": 9,
+      "function": "process_records",
+      "issue": "O(n²) nested loop over entire dataset",
+      "severity": "critical",
+      "explanation": "Quadratic complexity on the hottest code path. Every call to process_records triggers O(n²) iterations, dominating total energy consumption.",
+      "snippet": "for i in range(len(records)):\n    for j in range(len(records)):",
+      "optimization": "Build a parent_id → records dict for O(1) lookups, reducing to O(n).",
+      "estimated_savings": "Could reduce CPU energy by ~90% on this code path for large datasets"
+    },
+    {
+      "rank": 2,
+      "file": "data_processor.py",
+      "line": 12,
+      "function": "process_records",
+      "issue": "String concatenation with += inside nested loop (O(n²) memory copies)",
+      "severity": "high",
+      "explanation": "Compounds the O(n²) loop cost with O(n²) memory allocations per iteration. Creating and discarding strings is extremely wasteful.",
+      "snippet": "result += str(records[i][\"value\"]) + \",\" + str(records[j][\"value\"]) + \"\\n\"",
+      "optimization": "Collect in a list and use ''.join().",
+      "estimated_savings": "Could reduce memory allocation energy by ~80% on this code path"
+    },
+    {
+      "rank": 3,
+      "file": "data_processor.py",
+      "line": 34,
+      "function": "export_report",
+      "issue": "File opened inside loop causes repeated I/O overhead",
+      "severity": "high",
+      "explanation": "Each row triggers an open/close/write/fsync cycle. For thousands of rows this creates massive disk I/O overhead.",
+      "snippet": "for row in rows:\n    with open(\"/tmp/report.csv\", \"a\") as f:\n        f.write(...)",
+      "optimization": "Open file once before the loop; buffer writes.",
+      "estimated_savings": "Could reduce disk I/O energy by ~95% for large exports"
+    },
+    {
+      "rank": 4,
+      "file": "data_processor.py",
+      "line": 19,
+      "function": "load_data",
+      "issue": "f.readlines() loads entire file into memory unnecessarily",
+      "severity": "medium",
+      "explanation": "Whole file is read into a list before processing, doubling memory for the duration of the function.",
+      "snippet": "lines = f.readlines()\nfor line in lines:",
+      "optimization": "Iterate over file object directly: for line in f:",
+      "estimated_savings": "Could reduce peak memory by ~50% for large files"
+    },
+    {
+      "rank": 5,
+      "file": "data_processor.py",
+      "line": 26,
+      "function": "poll_status",
+      "issue": "Busy-wait polling loop wastes CPU cycles",
+      "severity": "medium",
+      "explanation": "Continuous polling keeps the CPU active even when no work is being done. The sleep(0.1) mitigates but does not eliminate the waste.",
+      "snippet": "while True:\n    status = check_fn()\n    ...\n    time.sleep(0.1)",
+      "optimization": "Use event-driven pattern (callbacks, asyncio.Event, or observer pattern).",
+      "estimated_savings": "Could reduce idle CPU energy by ~70% during waiting periods"
+    },
+    {
+      "rank": 6,
+      "file": "data_processor.py",
+      "line": 9,
+      "function": "process_records",
+      "issue": "range(len(...)) instead of direct iteration or enumerate",
+      "severity": "low",
+      "explanation": "Minor CPU inefficiency from extra attribute lookups and indexing on each iteration.",
+      "snippet": "for i in range(len(records)):",
+      "optimization": "Use for rec in records: or for i, rec in enumerate(records):",
+      "estimated_savings": "Negligible on its own, but combined with other fixes it contributes to overall efficiency"
+    }
+  ],
+  "recommendations": [
+    "Refactor process_records to use a parent_id → records dict for O(n) lookups instead of O(n²) nested loops",
+    "Replace string concatenation with += in process_records by collecting in a list and using ''.join()",
+    "Move file open outside the loop in export_report and buffer writes to minimize disk I/O",
+    "Replace f.readlines() in load_data with direct file iteration (for line in f:) to reduce memory usage",
+    "Replace polling in poll_status with an event-driven or callback-based notification mechanism",
+    "Use direct iteration (for rec in records:) instead of range(len(records)) where index is not needed"
+  ]
+}

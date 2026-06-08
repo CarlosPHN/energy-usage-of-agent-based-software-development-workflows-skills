@@ -1,0 +1,86 @@
+{
+  "energy_efficiency_score": 32,
+  "hotspots": [
+    {
+      "id": "H-001",
+      "function": "getUsersWithOrders",
+      "location": "user_service.js:3-13",
+      "problem": "Requests ejecutadas secuencialmente en bucle for-of con await bloqueante por iteración",
+      "detail": "Cada iteración espera a que finalicen las dos fetch (usuario + pedidos) antes de comenzar la siguiente. No hay paralelismo ni con Promise.all ni con Promise.allSettled.",
+      "energy_waste": "ALTA",
+      "impact": "El tiempo de ejecución total es O(n * (t_usuario + t_pedidos)) en lugar de O(max(t_usuario + t_pedidos)). Mantiene la CPU y la red activas mucho más tiempo del necesario, aumentando el consumo energético proporcionalmente al número de usuarios."
+    },
+    {
+      "id": "H-002",
+      "function": "logBatch",
+      "location": "user_service.js:25-31",
+      "problem": "Concatenación O(n²) con operador += en strings + escritura síncrona que sobrescribe el archivo",
+      "detail": "El bucle usa output += msg creando un nuevo string en cada iteración (coste cuadrático). fs.writeFileSync bloquea el event loop. Además se sobrescribe el log en cada llamada en lugar de append.",
+      "energy_waste": "ALTA",
+      "impact": "La concatenación incremental tiene complejidad O(n²) en memoria y CPU. La E/S síncrona impide que otras tareas progresen durante la escritura, desperdiciando ciclos de reloj."
+    },
+    {
+      "id": "H-003",
+      "function": "loadConfig",
+      "location": "user_service.js:15-19",
+      "problem": "Lectura síncrona de archivo con readFileSync sin cacheo ni uso de require()",
+      "detail": "fs.readFileSync bloquea el event loop hasta que el archivo se lee del disco. Para un JSON estático de configuración, require() carga una sola vez con caché.",
+      "energy_waste": "MEDIA",
+      "impact": "Cada llamada a loadConfig() detiene el event loop. Si se llama frecuentemente, el coste acumulado en E/S síncrona es significativo."
+    },
+    {
+      "id": "H-004",
+      "function": "deepClone",
+      "location": "user_service.js:21-23",
+      "problem": "Clonado mediante JSON.parse(JSON.stringify(obj)) con doble recorrido del objeto",
+      "detail": "Este método recorre el objeto dos veces (serialización + parsing), no maneja funciones, undefined, símbolos ni referencias circulares, y para objetos grandes es muy costoso en CPU y memoria.",
+      "energy_waste": "MEDIA",
+      "impact": "El doble recorrido desperdicia CPU y memoria. Para objetos anidados grandes, podría ser reemplazado por structuredClone() (nativo) que es significativamente más eficiente."
+    }
+  ],
+  "prioritized_issues": [
+    {
+      "priority": 1,
+      "id": "H-001",
+      "rationale": "Afecta directamente al tiempo de respuesta y consumo de red. El impacto escala linealmente con el número de usuarios y es el problema más fácil de detectar y corregir."
+    },
+    {
+      "priority": 2,
+      "id": "H-002",
+      "rationale": "Combina un anti-patrón de strings (O(n²)) con E/S síncrona y pérdida de datos por sobrescritura. Impacto alto en logs de volumen significativo."
+    },
+    {
+      "priority": 3,
+      "id": "H-003",
+      "rationale": "Aunque el impacto por llamada es medio, si la configuración se consulta repetidamente el coste acumulado es evitable con require() o fs.readFile asíncrono."
+    },
+    {
+      "priority": 4,
+      "id": "H-004",
+      "rationale": "Problema localizado y reemplazable por structuredClone() nativo. El impacto depende del tamaño de los objetos clonados."
+    }
+  ],
+  "recommendations": [
+    {
+      "for": "H-001",
+      "action": "Sustituir el bucle secuencial por Promise.all() mapeando userIds a promesas, y dentro de cada usuario paralelizar las dos fetch con Promise.all.",
+      "estimated_gain": "ALTO — Reduce el tiempo total de O(n*(t1+t2)) a O(max(t1+t2)), con ganancia creciente con n."
+    },
+    {
+      "for": "H-002",
+      "action": "Usar un array con .join('') para la concatenación (O(n)), fs.promises.appendFile para escritura asíncrona sin bloqueo, y new Date().toISOString() hoisted fuera del bucle.",
+      "estimated_gain": "ALTO — Elimina la complejidad O(n²) y el bloqueo del event loop."
+    },
+    {
+      "for": "H-003",
+      "action": "Reemplazar readFileSync + JSON.parse por require('/etc/app/config.json') o, si el archivo puede cambiar, usar fs.promises.readFile con caché memoizada.",
+      "estimated_gain": "MEDIO — Evita E/S síncrona y aprovecha el caché de módulos de Node.js."
+    },
+    {
+      "for": "H-004",
+      "action": "Reemplazar JSON.parse(JSON.stringify(obj)) por structuredClone(obj) disponible desde Node 17+.",
+      "estimated_gain": "MEDIO — Rendimiento ~2x más rápido y manejo correcto de tipos complejos."
+    }
+  ],
+  "summary": "El archivo user_service.js contiene 4 hotspots energéticos. Los dos más críticos (H-001 y H-002) son responsables de la mayor parte del desperdicio: falta de paralelismo en peticiones HTTP y concatenación O(n²) de strings con E/S síncrona. La puntuación global de eficiencia energética es 32/100, indicando que hay margen de mejora significativo con cambios localizados."
+}

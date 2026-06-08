@@ -1,0 +1,199 @@
+{
+  "skill": "energy-aware-analysis",
+  "input_path": ".agents/skills/energy-aware-analysis/evals/files/sample-javascript/user_service.js",
+  "languages_detected": ["javascript"],
+  "files_analyzed": 1,
+  "energy_efficiency_score": 50,
+  "summary": {
+    "total_issues": 6,
+    "critical": 1,
+    "high": 2,
+    "medium": 1,
+    "low": 2,
+    "top_areas": [
+      "Sequential await fetch() in loop (N+1 requests) in getUsersWithOrders",
+      "String concatenation with += in loop in logBatch",
+      "Synchronous file I/O in hot path (writeFileSync) in logBatch"
+    ]
+  },
+  "hotspots": [
+    {
+      "file": "user_service.js",
+      "line": 5,
+      "function": "getUsersWithOrders",
+      "issue": "Sequential await fetch() in loop causing N+1 network requests",
+      "severity": "critical",
+      "impact": {
+        "cpu": "low",
+        "memory": "low",
+        "disk": "none",
+        "network": "high"
+      },
+      "explanation": "Each iteration awaits two sequential fetch calls before moving to the next user ID. For n users, this makes 2n serial round-trips instead of parallelizing independent requests. Wall-clock time grows linearly and network bandwidth is underutilized.",
+      "snippet": "for (const id of userIds) {\n    const user = await fetch(`.../users/${id}`);\n    const userData = await user.json();\n    const orders = await fetch(`.../users/${id}/orders`);\n    const ordersData = await orders.json();\n    result.push({ user: userData, orders: ordersData });\n  }",
+      "optimization": "Collect all fetch promises into an array and use Promise.all() to issue requests concurrently. Combine user and orders fetches per ID into a single Promise.all() as well."
+    },
+    {
+      "file": "user_service.js",
+      "line": 27,
+      "function": "logBatch",
+      "issue": "String concatenation with += in loop (O(n²) string copying)",
+      "severity": "high",
+      "impact": {
+        "cpu": "high",
+        "memory": "high",
+        "disk": "low",
+        "network": "none"
+      },
+      "explanation": "Strings are immutable in JavaScript. Each iteration creates a new string that copies the entire accumulated content, yielding O(n²) time and memory for large message arrays.",
+      "snippet": "let output = \"\";\nfor (const msg of messages) {\n    output += `[${new Date().toISOString()}] ${msg}\\n`;\n  }",
+      "optimization": "Collect parts in an array and use .join('') at the end, or use an array of strings with push()."
+    },
+    {
+      "file": "user_service.js",
+      "line": 30,
+      "function": "logBatch",
+      "issue": "Synchronous file write (writeFileSync) in potentially hot path blocks event loop",
+      "severity": "high",
+      "impact": {
+        "cpu": "medium",
+        "memory": "low",
+        "disk": "high",
+        "network": "none"
+      },
+      "explanation": "fs.writeFileSync blocks the Node.js event loop during disk I/O. If logBatch is called frequently, the entire server stalls waiting for writes. Also uses write mode (not append), overwriting previous logs.",
+      "snippet": "fs.writeFileSync(\"/var/log/app.log\", output);",
+      "optimization": "Use fs.promises.appendFile or a streaming logger (e.g., pino, winston) with async writes and file rotation."
+    },
+    {
+      "file": "user_service.js",
+      "line": 22,
+      "function": "deepClone",
+      "issue": "JSON.parse(JSON.stringify(obj)) for deep cloning is CPU-intensive",
+      "severity": "medium",
+      "impact": {
+        "cpu": "high",
+        "memory": "medium",
+        "disk": "none",
+        "network": "none"
+      },
+      "explanation": "Serializes the entire object to a string then parses it back, wasting CPU cycles on stringification and re-parsing. Also loses undefined, functions, symbols, Dates, and circular references.",
+      "snippet": "return JSON.parse(JSON.stringify(obj));",
+      "optimization": "Use structuredClone(obj) (available since Node 17+, all modern browsers) which is faster and preserves more types."
+    },
+    {
+      "file": "user_service.js",
+      "line": 16,
+      "function": "loadConfig",
+      "issue": "Synchronous file read (readFileSync) blocks event loop",
+      "severity": "low",
+      "impact": {
+        "cpu": "low",
+        "memory": "low",
+        "disk": "low",
+        "network": "none"
+      },
+      "explanation": "fs.readFileSync blocks the event loop during I/O. If called only at startup the impact is minimal, but it is a blocking operation with no error handling if the file is missing or malformed.",
+      "snippet": "const raw = fs.readFileSync(\"/etc/app/config.json\", \"utf-8\");\n  const config = JSON.parse(raw);",
+      "optimization": "Use fs.promises.readFile with async/await, or require() the JSON file directly if it is a static asset."
+    },
+    {
+      "file": "user_service.js",
+      "line": 28,
+      "function": "logBatch",
+      "issue": "new Date() instantiated inside every loop iteration",
+      "severity": "low",
+      "impact": {
+        "cpu": "low",
+        "memory": "low",
+        "disk": "none",
+        "network": "none"
+      },
+      "explanation": "Each iteration allocates a new Date object. While individually cheap, repeated allocations for large batches add GC pressure.",
+      "snippet": "output += `[${new Date().toISOString()}] ${msg}\\n`;",
+      "optimization": "Compute the timestamp once before the loop if sub-second precision is acceptable, or use a cached formatter."
+    }
+  ],
+  "prioritized_issues": [
+    {
+      "rank": 1,
+      "file": "user_service.js",
+      "line": 5,
+      "function": "getUsersWithOrders",
+      "issue": "Sequential await fetch() in loop causing N+1 network requests",
+      "severity": "critical",
+      "explanation": "Each user ID triggers two sequential HTTP requests before moving to the next. This is the hottest network path — energy waste grows linearly with userIds length.",
+      "snippet": "for (const id of userIds) {\n    const user = await fetch(`.../users/${id}`);\n    ...",
+      "optimization": "Use Promise.all() to parallelize independent requests.",
+      "estimated_savings": "Could reduce wall-clock time and network energy by ~50-80% for large userIds arrays"
+    },
+    {
+      "rank": 2,
+      "file": "user_service.js",
+      "line": 27,
+      "function": "logBatch",
+      "issue": "String concatenation with += in loop (O(n²) string copying)",
+      "severity": "high",
+      "explanation": "Implicit quadratic complexity for string building in a function likely called on every request batch.",
+      "snippet": "let output = \"\";\nfor (const msg of messages) {\n    output += `[${new Date().toISOString()}] ${msg}\\n`;\n  }",
+      "optimization": "Use array push + join('') pattern.",
+      "estimated_savings": "Could reduce CPU/memory energy by ~60-90% for large batches"
+    },
+    {
+      "rank": 3,
+      "file": "user_service.js",
+      "line": 30,
+      "function": "logBatch",
+      "issue": "Synchronous file write (writeFileSync) in potentially hot path blocks event loop",
+      "severity": "high",
+      "explanation": "Blocks the entire Node.js event loop on every log batch. Compounded with the O(n²) string issue above.",
+      "snippet": "fs.writeFileSync(\"/var/log/app.log\", output);",
+      "optimization": "Use async fs.promises.appendFile or a streaming async logger.",
+      "estimated_savings": "Eliminates event loop blocking; moderate energy savings depending on call frequency"
+    },
+    {
+      "rank": 4,
+      "file": "user_service.js",
+      "line": 22,
+      "function": "deepClone",
+      "issue": "JSON.parse(JSON.stringify(obj)) for deep cloning is CPU-intensive",
+      "severity": "medium",
+      "explanation": "Unnecessary double pass (stringify + parse) on every clone. Impact depends on object size and call frequency.",
+      "snippet": "return JSON.parse(JSON.stringify(obj));",
+      "optimization": "Replace with structuredClone(obj).",
+      "estimated_savings": "Could reduce CPU energy by ~30-50% per clone operation"
+    },
+    {
+      "rank": 5,
+      "file": "user_service.js",
+      "line": 16,
+      "function": "loadConfig",
+      "issue": "Synchronous file read (readFileSync) blocks event loop",
+      "severity": "low",
+      "explanation": "Blocking I/O on a function likely called once at startup. Low frequency mitigates impact, but still a best-practice violation.",
+      "snippet": "const raw = fs.readFileSync(\"/etc/app/config.json\", \"utf-8\");",
+      "optimization": "Use fs.promises.readFile or require() for JSON config files.",
+      "estimated_savings": "Minimal unless called repeatedly; mostly a correctness/blocking concern"
+    },
+    {
+      "rank": 6,
+      "file": "user_service.js",
+      "line": 28,
+      "function": "logBatch",
+      "issue": "new Date() instantiated inside every loop iteration",
+      "severity": "low",
+      "explanation": "Small allocation per iteration; cumulative GC pressure for large batches.",
+      "snippet": "`[${new Date().toISOString()}] ${msg}\\n`",
+      "optimization": "Hoist Date creation outside the loop if same timestamp is acceptable.",
+      "estimated_savings": "Negligible standalone, but contributes to overall GC overhead in hot loops"
+    }
+  ],
+  "recommendations": [
+    "Refactor getUsersWithOrders to use Promise.all() for concurrent network requests and reduce wall-clock time by 50-80%",
+    "Replace string concatenation with += in logBatch using array push + join('') to eliminate O(n²) copying",
+    "Replace synchronous fs.writeFileSync in logBatch with async streaming writes (e.g., fs.promises.appendFile or pino)",
+    "Replace JSON.parse(JSON.stringify(obj)) with structuredClone(obj) for faster, type-safe deep cloning",
+    "Add error handling for all fetch calls and file I/O operations to prevent crashes and wasted retries",
+    "Consider using fs.promises.readFile or require() in loadConfig instead of readFileSync"
+  ]
+}

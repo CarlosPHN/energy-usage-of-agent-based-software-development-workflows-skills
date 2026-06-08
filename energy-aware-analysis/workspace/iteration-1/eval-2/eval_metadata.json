@@ -1,0 +1,35 @@
+{
+  "eval_id": 2,
+  "eval_name": "java-order-processor",
+  "prompt": "Necesito un análisis de eficiencia energética para el código Java en evals/files/sample-java/. Dame el reporte en formato JSON con los hotspots más críticos.",
+  "assertions": [
+    {
+      "text": "The output is valid JSON",
+      "expected": true
+    },
+    {
+      "text": "The output contains an 'energy_efficiency_score' field (0-100)",
+      "expected": true
+    },
+    {
+      "text": "The output identifies the O(n²) nested loop in findDuplicates",
+      "expected": true
+    },
+    {
+      "text": "The output identifies N+1 database queries in processOrders",
+      "expected": true
+    },
+    {
+      "text": "The output identifies string concatenation with += in a loop (SQL building)",
+      "expected": true
+    },
+    {
+      "text": "The output identifies reading one byte at a time in readConfig",
+      "expected": true
+    },
+    {
+      "text": "The output has a 'languages_detected' array containing 'java'",
+      "expected": true
+    }
+  ]
+}

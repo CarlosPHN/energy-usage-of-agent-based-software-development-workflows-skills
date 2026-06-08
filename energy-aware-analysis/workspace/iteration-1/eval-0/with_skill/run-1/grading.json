@@ -1,0 +1,55 @@
+{
+  "expectations": [
+    {
+      "text": "The output is valid JSON",
+      "passed": true,
+      "evidence": "File report.json parses as valid JSON with correct syntax"
+    },
+    {
+      "text": "The output contains an 'energy_efficiency_score' field (0-100)",
+      "passed": true,
+      "evidence": "Found energy_efficiency_score: 42 at line 6"
+    },
+    {
+      "text": "The output identifies the O(n²) nested loop in process_records",
+      "passed": true,
+      "evidence": "Hotspot 'O(n²) nested loop over entire dataset' at line 24, referencing line 9 of data_processor.py"
+    },
+    {
+      "text": "The output identifies string concatenation with += in a loop",
+      "passed": true,
+      "evidence": "Hotspot at line 40: 'String concatenation with += inside nested loop' at line 12"
+    },
+    {
+      "text": "The output identifies busy-waiting/polling in poll_status",
+      "passed": true,
+      "evidence": "Hotspot at line 88: 'Busy-wait polling loop wastes CPU cycles' referencing poll_status"
+    },
+    {
+      "text": "The output identifies repeated file open/write inside a loop in export_report",
+      "passed": true,
+      "evidence": "Hotspot at line 56: 'File opened inside loop causes repeated I/O overhead' referencing export_report"
+    },
+    {
+      "text": "The output includes 'snippet' fields showing affected code",
+      "passed": true,
+      "evidence": "Every hotspot has a 'snippet' field with code excerpts (lines 33, 49, 65, etc.)"
+    },
+    {
+      "text": "Each hotspot includes an 'optimization' field",
+      "passed": true,
+      "evidence": "Every hotspot has an 'optimization' field with actionable suggestions"
+    },
+    {
+      "text": "The output has a 'languages_detected' array containing 'python'",
+      "passed": true,
+      "evidence": "languages_detected: ['python'] at line 4"
+    }
+  ],
+  "summary": {
+    "passed": 9,
+    "failed": 0,
+    "total": 9,
+    "pass_rate": 1.0
+  }
+}

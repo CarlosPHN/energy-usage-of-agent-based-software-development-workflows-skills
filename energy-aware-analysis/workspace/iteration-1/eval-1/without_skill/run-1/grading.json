@@ -1,0 +1,45 @@
+{
+  "expectations": [
+    {
+      "text": "The output is valid JSON",
+      "passed": true,
+      "evidence": "File report.json parses as valid JSON with correct syntax"
+    },
+    {
+      "text": "The output contains an 'energy_efficiency_score' field (0-100)",
+      "passed": true,
+      "evidence": "Found energy_efficiency_score: 32 at line 2"
+    },
+    {
+      "text": "The output identifies the N+1 HTTP requests pattern in getUsersWithOrders",
+      "passed": true,
+      "evidence": "H-001 at line 5: 'Requests ejecutadas secuencialmente en bucle for-of' describing sequential await pattern"
+    },
+    {
+      "text": "The output identifies fs.readFileSync for loading config (blocking I/O)",
+      "passed": true,
+      "evidence": "H-003 at line 25: 'fs.readFileSync bloquea el event loop' for loadConfig"
+    },
+    {
+      "text": "The output identifies JSON.parse(JSON.stringify(obj)) deep clone pattern",
+      "passed": true,
+      "evidence": "H-004 at line 33: 'Clonado mediante JSON.parse(JSON.stringify(obj))'"
+    },
+    {
+      "text": "The output identifies string concatenation with += in logBatch loop",
+      "passed": true,
+      "evidence": "H-002 at line 17: 'Concatenación O(n²) con operador +=' in logBatch"
+    },
+    {
+      "text": "The output has a 'languages_detected' array containing 'javascript'",
+      "passed": false,
+      "evidence": "No 'languages_detected' array present in the output"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 1,
+    "total": 7,
+    "pass_rate": 0.857
+  }
+}
