@@ -1,0 +1,89 @@
+{
+  "skill": "energy-aware-analysis",
+  "input_path": "evals/files/sample-javascript/",
+  "languages_detected": ["javascript"],
+  "files_analyzed": 1,
+  "energy_efficiency_score": 35,
+  "summary": {
+    "total_issues": 5,
+    "critical": 2,
+    "high": 2,
+    "medium": 1,
+    "low": 0,
+    "top_areas": [
+      "N+1 HTTP requests in getUsersWithOrders",
+      "Blocking fs.readFileSync in loadConfig",
+      "JSON.parse(JSON.stringify(obj)) deep clone in deepClone"
+    ]
+  },
+  "prioritized_issues": [
+    {
+      "rank": 1,
+      "file": "user_service.js",
+      "line": 5,
+      "function": "getUsersWithOrders",
+      "issue": "N+1 HTTP requests — sequential fetch inside loop",
+      "severity": "critical",
+      "explanation": "For each user, two sequential HTTP requests are made inside the loop. With N users, this makes 2N requests instead of 2 (batch) requests, massively increasing network energy and latency.",
+      "snippet": "for (const id of userIds) {\n    const user = await fetch(`https://api.example.com/users/${id}`);\n    const userData = await user.json();\n    const orders = await fetch(`https://api.example.com/users/${id}/orders`);\n    const ordersData = await orders.json();\n    result.push({ user: userData, orders: ordersData });\n  }",
+      "optimization": "Batch all user requests and all orders requests in parallel using Promise.all. Restructure the API to accept batch endpoints if available.",
+      "estimated_savings": "Could reduce network energy by ~80% and wall-clock latency by ~80%"
+    },
+    {
+      "rank": 2,
+      "file": "user_service.js",
+      "line": 16,
+      "function": "loadConfig",
+      "issue": "Blocking synchronous file read (fs.readFileSync)",
+      "severity": "high",
+      "explanation": "fs.readFileSync blocks the event loop during I/O. While the I/O itself is necessary, the sync call prevents other operations from executing concurrently.",
+      "snippet": "const raw = fs.readFileSync(\"/etc/app/config.json\", \"utf-8\");\n  const config = JSON.parse(raw);\n  return config;",
+      "optimization": "Use fs.promises.readFile for async non-blocking I/O, or cache the config after first read.",
+      "estimated_savings": "Could reduce CPU idle waste by ~40% during I/O wait"
+    },
+    {
+      "rank": 3,
+      "file": "user_service.js",
+      "line": 22,
+      "function": "deepClone",
+      "issue": "JSON.parse(JSON.stringify(obj)) deep clone — double serialization overhead",
+      "severity": "high",
+      "explanation": "Serializing to JSON and parsing back is the most expensive way to deep-clone an object. It consumes CPU for serialization/parsing and memory for the intermediate string (2x the object size).",
+      "snippet": "return JSON.parse(JSON.stringify(obj));",
+      "optimization": "Use structuredClone(obj) (available in Node 17+ and modern browsers) which is a native, more efficient deep clone.",
+      "estimated_savings": "Could reduce CPU energy by ~60% and memory by ~50% for large objects"
+    },
+    {
+      "rank": 4,
+      "file": "user_service.js",
+      "line": 26,
+      "function": "logBatch",
+      "issue": "String concatenation with += in loop",
+      "severity": "medium",
+      "explanation": "Using += for string concatenation in a loop creates intermediate string objects, causing O(n²) memory allocations.",
+      "snippet": "let output = \"\";\n  for (const msg of messages) {\n    output += `[${new Date().toISOString()}] ${msg}\\n`;\n  }",
+      "optimization": "Collect message parts in an array and use .join('') at the end.",
+      "estimated_savings": "Could reduce memory allocation energy by ~60% for large arrays"
+    },
+    {
+      "rank": 5,
+      "file": "user_service.js",
+      "line": 30,
+      "function": "logBatch",
+      "issue": "File written on every batch call without append check",
+      "severity": "low",
+      "explanation": "Each call to logBatch overwrites the log file. If called frequently, this causes unnecessary write amplification.",
+      "snippet": "fs.writeFileSync(\"/var/log/app.log\", output);",
+      "optimization": "Use fs.appendFileSync or fs.promises.appendFile, or buffer logs and flush periodically.",
+      "estimated_savings": "Could reduce disk I/O energy by ~30% if logBatch is called multiple times"
+    }
+  ],
+  "hotspots": [],
+  "recommendations": [
+    "Replace sequential fetch loop in getUsersWithOrders with Promise.all for parallel requests",
+    "Replace fs.readFileSync with fs.promises.readFile in loadConfig",
+    "Replace JSON.parse(JSON.stringify(obj)) with structuredClone(obj)",
+    "Replace string concatenation with array join in logBatch",
+    "Use fs.appendFileSync instead of fs.writeFileSync in logBatch to preserve logs"
+  ]
+}

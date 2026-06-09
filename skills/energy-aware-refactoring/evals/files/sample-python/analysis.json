@@ -1,0 +1,102 @@
+{
+  "skill": "energy-aware-analysis",
+  "input_path": "evals/files/sample-python/",
+  "languages_detected": ["python"],
+  "files_analyzed": 1,
+  "energy_efficiency_score": 42,
+  "summary": {
+    "total_issues": 6,
+    "critical": 2,
+    "high": 2,
+    "medium": 1,
+    "low": 1,
+    "top_areas": [
+      "O(n²) nested loop in process_records",
+      "String concatenation with += inside nested loop in process_records",
+      "File open inside loop in export_report"
+    ]
+  },
+  "prioritized_issues": [
+    {
+      "rank": 1,
+      "file": "data_processor.py",
+      "line": 9,
+      "function": "process_records",
+      "issue": "O(n²) nested loop over entire dataset",
+      "severity": "critical",
+      "explanation": "Quadratic complexity on the hottest code path. Each call to process_records triggers O(n²) iterations, dominating total energy consumption.",
+      "snippet": "for i in range(len(records)):\n    for j in range(len(records)):\n        if records[i][\"id\"] == records[j][\"parent_id\"]:",
+      "optimization": "Build a parent_id → records dict for O(1) lookups, reducing to O(n).",
+      "estimated_savings": "Could reduce CPU energy by ~90% on this code path for large datasets"
+    },
+    {
+      "rank": 2,
+      "file": "data_processor.py",
+      "line": 12,
+      "function": "process_records",
+      "issue": "String concatenation with += inside nested loop (O(n²) memory copies)",
+      "severity": "high",
+      "explanation": "Compounds the O(n²) loop cost with O(n²) memory allocations per iteration.",
+      "snippet": "result += str(records[i][\"value\"]) + \",\" + str(records[j][\"value\"]) + \"\\n\"",
+      "optimization": "Collect in a list and use ''.join().",
+      "estimated_savings": "Could reduce memory allocation energy by ~80% on this code path"
+    },
+    {
+      "rank": 3,
+      "file": "data_processor.py",
+      "line": 34,
+      "function": "export_report",
+      "issue": "File opened inside loop causes repeated I/O overhead",
+      "severity": "high",
+      "explanation": "Each row triggers an open/close/write/fsync cycle. For thousands of rows this creates massive disk I/O overhead.",
+      "snippet": "for row in rows:\n    with open(\"/tmp/report.csv\", \"a\") as f:\n        f.write(f\"{row[0]},{row[1]},{row[2]}\\n\")",
+      "optimization": "Open file once before the loop; buffer writes.",
+      "estimated_savings": "Could reduce disk I/O energy by ~95% for large exports"
+    },
+    {
+      "rank": 4,
+      "file": "data_processor.py",
+      "line": 19,
+      "function": "load_data",
+      "issue": "f.readlines() loads entire file into memory unnecessarily",
+      "severity": "medium",
+      "explanation": "Whole file is read into a list before processing, doubling memory for the duration of the function.",
+      "snippet": "lines = f.readlines()\nfor line in lines:",
+      "optimization": "Iterate over file object directly: for line in f:",
+      "estimated_savings": "Could reduce peak memory by ~50% for large files"
+    },
+    {
+      "rank": 5,
+      "file": "data_processor.py",
+      "line": 26,
+      "function": "poll_status",
+      "issue": "Busy-wait polling loop wastes CPU cycles",
+      "severity": "medium",
+      "explanation": "Continuous polling keeps the CPU active even when no work is being done.",
+      "snippet": "while True:\n    status = check_fn()\n    if status == \"ready\":\n        break\n    time.sleep(0.1)",
+      "optimization": "Use event-driven pattern (callbacks, asyncio.Event, or observer pattern).",
+      "estimated_savings": "Could reduce idle CPU energy by ~70% during waiting periods"
+    },
+    {
+      "rank": 6,
+      "file": "data_processor.py",
+      "line": 9,
+      "function": "process_records",
+      "issue": "range(len(...)) instead of direct iteration or enumerate",
+      "severity": "low",
+      "explanation": "Minor CPU inefficiency from extra attribute lookups and indexing.",
+      "snippet": "for i in range(len(records)):",
+      "optimization": "Use for rec in records: or for i, rec in enumerate(records):",
+      "estimated_savings": "Negligible on its own, but contributes to overall efficiency"
+    }
+  ],
+  "hotspots": [],
+  "recommendations": [
+    "Refactor process_records to use a parent_id → records dict for O(n) lookups instead of O(n²) nested loops",
+    "Replace string concatenation with += in process_records by collecting in a list and using ''.join()",
+    "Move file open outside the loop in export_report and buffer writes to minimize disk I/O",
+    "Replace f.readlines() in load_data with direct file iteration (for line in f:) to reduce memory usage",
+    "Replace polling in poll_status with an event-driven or callback-based notification mechanism",
+    "Use direct iteration (for rec in records:) instead of range(len(records)) where index is not needed"
+  ]
+}

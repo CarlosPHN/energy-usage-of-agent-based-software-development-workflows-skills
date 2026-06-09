@@ -1,0 +1,89 @@
+{
+  "skill": "energy-aware-analysis",
+  "input_path": "evals/files/sample-java/",
+  "languages_detected": ["java"],
+  "files_analyzed": 1,
+  "energy_efficiency_score": 30,
+  "summary": {
+    "total_issues": 5,
+    "critical": 2,
+    "high": 2,
+    "medium": 1,
+    "low": 0,
+    "top_areas": [
+      "N+1 database queries in processOrders",
+      "O(n²) nested loop in findDuplicates",
+      "String concatenation with += in loop in processOrders"
+    ]
+  },
+  "prioritized_issues": [
+    {
+      "rank": 1,
+      "file": "OrderProcessor.java",
+      "line": 11,
+      "function": "processOrders",
+      "issue": "N+1 database queries — query inside loop instead of batch query",
+      "severity": "critical",
+      "explanation": "A new SQL query is executed inside the loop for each order ID, creating N+1 round trips to the database. This massively increases network and database CPU consumption.",
+      "snippet": "for (int i = 0; i < orderIds.size(); i++) {\n      sql += \"SELECT * FROM orders WHERE id = \" + orderIds.get(i) + \";\";\n      Statement stmt = conn.createStatement();\n      ResultSet rs = stmt.executeQuery(sql);",
+      "optimization": "Use a single batch query: SELECT * FROM orders WHERE id IN (...), then process results in memory.",
+      "estimated_savings": "Could reduce network+DB CPU energy by ~90%"
+    },
+    {
+      "rank": 2,
+      "file": "OrderProcessor.java",
+      "line": 11,
+      "function": "processOrders",
+      "issue": "String concatenation with += in loop (SQL building)",
+      "severity": "high",
+      "explanation": "Using += for string concatenation in a loop creates a new String object each iteration, causing unnecessary memory allocations and garbage collection overhead.",
+      "snippet": "sql += \"SELECT * FROM orders WHERE id = \" + orderIds.get(i) + \";\";",
+      "optimization": "Use StringBuilder or a parameterized batch query with prepared statement.",
+      "estimated_savings": "Could reduce memory allocation energy by ~70%"
+    },
+    {
+      "rank": 3,
+      "file": "OrderProcessor.java",
+      "line": 27,
+      "function": "readConfig",
+      "issue": "Reading file one byte at a time — extremely inefficient I/O",
+      "severity": "high",
+      "explanation": "Using fis.read() to read one byte at a time causes a system call per byte. For a config file of even a few KB, this means thousands of expensive context switches.",
+      "snippet": "int b;\n      String content = \"\";\n      while ((b = fis.read()) != -1) {\n          content += (char) b;\n      }",
+      "optimization": "Use BufferedReader with InputStreamReader, or read the entire file into a byte array with readAllBytes(). Also use StringBuilder for content accumulation.",
+      "estimated_savings": "Could reduce disk I/O energy by ~90%"
+    },
+    {
+      "rank": 4,
+      "file": "OrderProcessor.java",
+      "line": 38,
+      "function": "findDuplicates",
+      "issue": "O(n²) nested loop for duplicate detection",
+      "severity": "critical",
+      "explanation": "The nested loop compares every element with every other element, resulting in O(n²) comparisons. For large lists this is extremely CPU-intensive.",
+      "snippet": "for (int i = 0; i < numbers.size(); i++) {\n          for (int j = 0; j < numbers.size(); j++) {\n              if (i != j && numbers.get(i).equals(numbers.get(j))) {\n                  dupes.add(numbers.get(i));\n              }\n          }\n      }",
+      "optimization": "Use a HashSet to track seen elements. For each element, if it's already in the set, it's a duplicate. This reduces to O(n) time.",
+      "estimated_savings": "Could reduce CPU energy by ~95% for large lists"
+    },
+    {
+      "rank": 5,
+      "file": "OrderProcessor.java",
+      "line": 7,
+      "function": "processOrders",
+      "issue": "Connection created per method call instead of using connection pool",
+      "severity": "medium",
+      "explanation": "DriverManager.getConnection() creates a new database connection each time processOrders is called. Connection establishment is expensive (TCP handshake, SSL, auth).",
+      "snippet": "Connection conn = DriverManager.getConnection(\"jdbc:mysql://localhost/db\", \"user\", \"pass\");",
+      "optimization": "Use a connection pool (HikariCP, DBCP2) or reuse a shared connection.",
+      "estimated_savings": "Could reduce connection overhead energy by ~80% for repeated calls"
+    }
+  ],
+  "hotspots": [],
+  "recommendations": [
+    "Replace loop with batch query (IN clause) in processOrders",
+    "Use StringBuilder for SQL building or parameterized queries",
+    "Replace byte-by-byte read with BufferedReader or readAllBytes in readConfig",
+    "Replace nested loop with HashSet for O(n) duplicate detection in findDuplicates",
+    "Use connection pooling (HikariCP) instead of DriverManager.getConnection()"
+  ]
+}

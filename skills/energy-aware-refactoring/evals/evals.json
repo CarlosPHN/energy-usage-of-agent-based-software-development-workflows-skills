@@ -1,0 +1,67 @@
+{
+  "skill_name": "energy-aware-refactoring",
+  "evals": [
+    {
+      "id": 0,
+      "name": "python-data-processor",
+      "prompt": "Aplica refactorización energética al código en evals/files/sample-python/data_processor.py usando el análisis JSON en evals/files/sample-python/analysis.json. Necesito el código refactorizado y un reporte de cambios.",
+      "expected_output": "Refactored Python code file + structured JSON report with all changes applied",
+      "files": [
+        "evals/files/sample-python/data_processor.py",
+        "evals/files/sample-python/analysis.json"
+      ],
+      "expectations": [
+        "The O(n²) nested loop in process_records is refactored to use a dict-based lookup (O(n))",
+        "String concatenation with += inside process_records is replaced with list append + ''.join()",
+        "File open/close is moved outside the loop in export_report (open once before loop)",
+        "f.readlines() in load_data is replaced with direct file iteration (for line in f:)", 
+        "All original function signatures are preserved",
+        "The output includes a structured JSON with a changes_applied array",
+        "The output includes a unified diff/patch showing all changes",
+        "The output includes verification results (static_analysis field)",
+        "No new functions or features are introduced"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "javascript-user-service",
+      "prompt": "Refactoriza por eficiencia energética el código en evals/files/sample-javascript/user_service.js según el análisis en evals/files/sample-javascript/analysis.json. Devuelve el código modificado y el reporte JSON con los cambios.",
+      "expected_output": "Refactored JavaScript code file + structured JSON report with all changes applied",
+      "files": [
+        "evals/files/sample-javascript/user_service.js",
+        "evals/files/sample-javascript/analysis.json"
+      ],
+      "expectations": [
+        "The sequential fetch loop in getUsersWithOrders is replaced with Promise.all for parallel requests",
+        "fs.readFileSync in loadConfig is replaced with fs.promises.readFile (async)",
+        "JSON.parse(JSON.stringify(obj)) in deepClone is replaced with structuredClone(obj)",
+        "String concatenation with += in logBatch is replaced with array push + join('')",
+        "All original function signatures are preserved",
+        "The output includes a changes_applied array with before/after snippets",
+        "The output includes a unified diff/patch",
+        "No new functionality is introduced"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "java-order-processor",
+      "prompt": "Aplica las optimizaciones energéticas del análisis JSON al código Java en evals/files/sample-java/OrderProcessor.java. El análisis está en evals/files/sample-java/analysis.json. Dame el código refactorizado y el reporte detallado.",
+      "expected_output": "Refactored Java code file + structured JSON report with all changes applied",
+      "files": [
+        "evals/files/sample-java/OrderProcessor.java",
+        "evals/files/sample-java/analysis.json"
+      ],
+      "expectations": [
+        "The N+1 query loop in processOrders is replaced with a batch query (IN clause)",
+        "String concatenation with += in processOrders is replaced with StringBuilder or parameterized query",
+        "The byte-by-byte file read in readConfig is replaced with BufferedReader or readAllBytes",
+        "String concatenation with += in readConfig is replaced with StringBuilder",
+        "The O(n²) nested loop in findDuplicates is replaced with HashSet-based O(n) approach",
+        "All original function signatures are preserved",
+        "The output includes a changes_applied array and a unified diff",
+        "The output includes verification results",
+        "No new functionality is introduced"
+      ]
+    }
+  ]
+}
