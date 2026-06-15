@@ -4,63 +4,48 @@
     {
       "id": 0,
       "name": "python-data-processor",
-      "prompt": "Aplica refactorización energética al código en evals/files/sample-python/data_processor.py usando el análisis JSON en evals/files/sample-python/analysis.json. Necesito el código refactorizado y un reporte de cambios.",
-      "expected_output": "Refactored Python code file + structured JSON report with all changes applied",
-      "files": [
-        "evals/files/sample-python/data_processor.py",
-        "evals/files/sample-python/analysis.json"
-      ],
+      "prompt": "Refactoriza este código Python para que consuma menos energía, optimizando CPU, memoria e I/O de disco. No cambies firmas ni comportamiento:\n\nimport csv\nimport json\nimport os\nimport time\n\n\ndef process_records(records):\n    result = \"\"\n    for i in range(len(records)):\n        for j in range(len(records)):\n            if records[i][\"id\"] == records[j][\"parent_id\"]:\n                result += str(records[i][\"value\"]) + \",\" + str(records[j][\"value\"]) + \"\\n\"\n    return result\n\n\ndef load_data(filepath):\n    data = []\n    with open(filepath, \"r\") as f:\n        lines = f.readlines()\n        for line in lines:\n            data.append(json.loads(line))\n    return data\n\n\ndef poll_status(check_fn):\n    while True:\n        status = check_fn()\n        if status == \"ready\":\n            break\n        time.sleep(0.1)\n\n\ndef export_report(rows):\n    for row in rows:\n        with open(\"/tmp/report.csv\", \"a\") as f:\n            f.write(f\"{row[0]},{row[1]},{row[2]}\\n\")",
+      "expected_output": "Refactored Python code with energy optimizations applied",
+      "files": [],
       "expectations": [
         "The O(n²) nested loop in process_records is refactored to use a dict-based lookup (O(n))",
         "String concatenation with += inside process_records is replaced with list append + ''.join()",
         "File open/close is moved outside the loop in export_report (open once before loop)",
-        "f.readlines() in load_data is replaced with direct file iteration (for line in f:)", 
-        "All original function signatures are preserved",
-        "The output includes a structured JSON with a changes_applied array",
-        "The output includes a unified diff/patch showing all changes",
-        "The output includes verification results (static_analysis field)",
-        "No new functions or features are introduced"
+        "f.readlines() in load_data is replaced with direct file iteration (for line in f:)",
+        "All original function signatures are preserved (process_records, load_data, poll_status, export_report)",
+        "No new functions, parameters, or features are introduced",
+        "The output is ONLY the refactored code — no explanations, no JSON, no comments added"
       ]
     },
     {
       "id": 1,
       "name": "javascript-user-service",
-      "prompt": "Refactoriza por eficiencia energética el código en evals/files/sample-javascript/user_service.js según el análisis en evals/files/sample-javascript/analysis.json. Devuelve el código modificado y el reporte JSON con los cambios.",
-      "expected_output": "Refactored JavaScript code file + structured JSON report with all changes applied",
-      "files": [
-        "evals/files/sample-javascript/user_service.js",
-        "evals/files/sample-javascript/analysis.json"
-      ],
+      "prompt": "Optimiza el consumo energético de este código JavaScript. Hazlo más eficiente sin cambiar su comportamiento:\n\nconst fs = require(\"fs\");\n\nasync function getUsersWithOrders(userIds) {\n  const result = [];\n  for (const id of userIds) {\n    const user = await fetch(`https://api.example.com/users/${id}`);\n    const userData = await user.json();\n    const orders = await fetch(`https://api.example.com/users/${id}/orders`);\n    const ordersData = await orders.json();\n    result.push({ user: userData, orders: ordersData });\n  }\n  return result;\n}\n\nfunction loadConfig() {\n  const raw = fs.readFileSync(\"/etc/app/config.json\", \"utf-8\");\n  const config = JSON.parse(raw);\n  return config;\n}\n\nfunction deepClone(obj) {\n  return JSON.parse(JSON.stringify(obj));\n}\n\nfunction logBatch(messages) {\n  let output = \"\";\n  for (const msg of messages) {\n    output += `[${new Date().toISOString()}] ${msg}\\n`;\n  }\n  fs.writeFileSync(\"/var/log/app.log\", output);\n}",
+      "expected_output": "Refactored JavaScript code with energy optimizations applied",
+      "files": [],
       "expectations": [
         "The sequential fetch loop in getUsersWithOrders is replaced with Promise.all for parallel requests",
-        "fs.readFileSync in loadConfig is replaced with fs.promises.readFile (async)",
+        "fs.readFileSync in loadConfig is replaced with fs.promises.readFile (async, non-blocking)",
         "JSON.parse(JSON.stringify(obj)) in deepClone is replaced with structuredClone(obj)",
         "String concatenation with += in logBatch is replaced with array push + join('')",
-        "All original function signatures are preserved",
-        "The output includes a changes_applied array with before/after snippets",
-        "The output includes a unified diff/patch",
-        "No new functionality is introduced"
+        "All original function signatures are preserved (getUsersWithOrders, loadConfig, deepClone, logBatch)",
+        "The output is ONLY the refactored code — no explanations, no JSON, no metadata"
       ]
     },
     {
       "id": 2,
       "name": "java-order-processor",
-      "prompt": "Aplica las optimizaciones energéticas del análisis JSON al código Java en evals/files/sample-java/OrderProcessor.java. El análisis está en evals/files/sample-java/analysis.json. Dame el código refactorizado y el reporte detallado.",
-      "expected_output": "Refactored Java code file + structured JSON report with all changes applied",
-      "files": [
-        "evals/files/sample-java/OrderProcessor.java",
-        "evals/files/sample-java/analysis.json"
-      ],
+      "prompt": "Refactoriza este código Java para minimizar su consumo energético. Optimiza CPU, memoria e I/O sin alterar el comportamiento:\n\nimport java.sql.*;\nimport java.io.*;\nimport java.util.*;\n\npublic class OrderProcessor {\n\n    public List<String> processOrders(List<Integer> orderIds) throws SQLException {\n        List<String> result = new ArrayList<String>();\n        Connection conn = DriverManager.getConnection(\"jdbc:mysql://localhost/db\", \"user\", \"pass\");\n        String sql = \"\";\n        for (int i = 0; i < orderIds.size(); i++) {\n            sql += \"SELECT * FROM orders WHERE id = \" + orderIds.get(i) + \";\";\n            Statement stmt = conn.createStatement();\n            ResultSet rs = stmt.executeQuery(sql);\n            while (rs.next()) {\n                result.add(rs.getString(\"name\") + \",\" + rs.getString(\"total\"));\n            }\n            rs.close();\n            stmt.close();\n        }\n        conn.close();\n        return result;\n    }\n\n    public String readConfig() throws IOException {\n        FileInputStream fis = new FileInputStream(\"/etc/app/config.properties\");\n        int b;\n        String content = \"\";\n        while ((b = fis.read()) != -1) {\n            content += (char) b;\n        }\n        fis.close();\n        return content;\n    }\n\n    public List<Integer> findDuplicates(List<Integer> numbers) {\n        List<Integer> dupes = new ArrayList<Integer>();\n        for (int i = 0; i < numbers.size(); i++) {\n            for (int j = 0; j < numbers.size(); j++) {\n                if (i != j && numbers.get(i).equals(numbers.get(j))) {\n                    dupes.add(numbers.get(i));\n                }\n            }\n        }\n        return dupes;\n    }\n}",
+      "expected_output": "Refactored Java code with energy optimizations applied",
+      "files": [],
       "expectations": [
         "The N+1 query loop in processOrders is replaced with a batch query (IN clause)",
         "String concatenation with += in processOrders is replaced with StringBuilder or parameterized query",
-        "The byte-by-byte file read in readConfig is replaced with BufferedReader or readAllBytes",
+        "The byte-by-byte file read in readConfig is replaced with BufferedReader or readAllBytes (buffered I/O)",
         "String concatenation with += in readConfig is replaced with StringBuilder",
         "The O(n²) nested loop in findDuplicates is replaced with HashSet-based O(n) approach",
-        "All original function signatures are preserved",
-        "The output includes a changes_applied array and a unified diff",
-        "The output includes verification results",
-        "No new functionality is introduced"
+        "All original function signatures are preserved (processOrders, readConfig, findDuplicates)",
+        "The output is ONLY the refactored code — no explanations, no JSON, no metadata"
       ]
     }
   ]
