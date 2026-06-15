@@ -1,0 +1,59 @@
+{
+  "skill_name": "code-equivalence-review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Compare these two Python files for code equivalence:\n\nFile A:\n\ndef calculate_total(items):\n    total = 0\n    for item in items:\n        total += item.price * item.quantity\n    return total\n\nFile B:\n\ndef calculate_total(items):\n    total = 0\n    for item in items:\n        total += item.price * item.quantity\n    return total",
+      "expected_output": "true (identical files)",
+      "expectations": [
+        "Output must be exactly 'true'",
+        "Output must not include any explanation or additional text"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Compare these two Python files for equivalence:\n\nFile A:\n\ndef get_discount(price, rate):\n    return price * rate\n\nFile B:\n\ndef get_discount(price, rate):\n    disc = price * rate\n    return disc",
+      "expected_output": "true (only local variable extraction inside function body)",
+      "expectations": [
+        "Output must be exactly 'true'",
+        "Must recognize local temp variable introduction as allowed internal refactoring"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Compare these two Python files for code equivalence:\n\nFile A:\n\nclass UserService:\n    def get_user(self, user_id):\n        return {\"id\": user_id, \"name\": \"Alice\"}\n\nFile B:\n\nclass CustomerService:\n    def get_user(self, user_id):\n        return {\"id\": user_id, \"name\": \"Alice\"}",
+      "expected_output": "false (class renamed from UserService to CustomerService)",
+      "expectations": [
+        "Output must be exactly 'false'",
+        "Must detect class name change as a forbidden difference"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Compare these two Python files for code equivalence:\n\nFile A:\n\ndef process(user):\n    return f\"Processing {user}\"\n\nFile B:\n\ndef process(customer):\n    return f\"Processing {customer}\"",
+      "expected_output": "false (parameter renamed from user to customer)",
+      "expectations": [
+        "Output must be exactly 'false'",
+        "Must detect parameter name change as a signature change"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Compare these two Python files for code equivalence:\n\nFile A:\n\nclass Calculator:\n    def add(self, a, b):\n        return a + b\n    def subtract(self, a, b):\n        return a - b\n\nFile B:\n\nclass Calculator:\n    def add(self, a, b):\n        return a + b\n    def sub(self, a, b):\n        return a - b",
+      "expected_output": "false (method renamed from subtract to sub)",
+      "expectations": [
+        "Output must be exactly 'false'",
+        "Must detect method name change as a forbidden difference"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Compare these two Python files for code equivalence:\n\nFile A:\n\ndef is_adult(age):\n    return age >= 18\n\nFile B:\n\ndef is_adult(age):\n    return age > 18",
+      "expected_output": "false (behavioral difference: age == 18 treated differently)",
+      "expectations": [
+        "Output must be exactly 'false'",
+        "Must detect different comparison operator as a behavioral change"
+      ]
+    }
+  ]
+}
